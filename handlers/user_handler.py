@@ -17,22 +17,6 @@ from keyboards import (
 user_router = Router()
 user_router.message.filter(ChatTypeFilter(["private"]))
 
-previous_bot_message = None
-
-
-# class TgHandler:
-#     async def cloud_run(self, event):
-#         for message in event["messages"]:
-#             message_body = json.loads(message["details"]["message"]["body"])
-
-#             update = types.Update(**message_body)
-
-
-class ProcessState(StatesGroup):
-    first_step = State()
-    second_step = State()
-
-
 class AddUser(StatesGroup):
     name = State()
     amount_of_guests = State()
@@ -41,13 +25,6 @@ class AddUser(StatesGroup):
     number_of_table = State()
 
     last_message = State()
-
-    texts = {
-        'AddUser:name': 'Введите имя заново:',
-        'AddUser:phone_number': 'Введите номер телефона заново:',
-        'AddUser:number_of_table': 'Введите тариф заново:',
-    }
-
 
 @user_router.message(CommandStart())
 async def start_handler(message: types.Message):
@@ -144,10 +121,7 @@ async def add_number_of_table(callback_query: types.CallbackQuery, bot: Bot, sta
     data = await state.get_data()
     last_message_id = data.get('last_message_id')
     other_user_chat_id = 485061270
-    #  485061270 me
-    # 6121957414 2 me
-    # 1271362249
-    # магеллан - 670580354
+
     await bot.edit_message_text(f"Ваше имя: {data['name']}\n"
                                 f"Количество персон: {data['amount_of_guests']}\n"
                                 f'Время: {data["time"]}\n'
@@ -156,7 +130,7 @@ async def add_number_of_table(callback_query: types.CallbackQuery, bot: Bot, sta
                                 chat_id=callback_query.message.chat.id,
                                 message_id=last_message_id,
                                 reply_markup=reset_goal_kb)
-    # last_message_id = callback_query.message.chat.id
+
     await bot.send_message(
         other_user_chat_id,
         'Данные из бота:\n'
@@ -170,43 +144,42 @@ async def add_number_of_table(callback_query: types.CallbackQuery, bot: Bot, sta
 @user_router.callback_query(F.data == "rules")
 async def answer(callback_query: types.CallbackQuery, bot: Bot):
     global previous_bot_message
-    await bot.send_message(callback_query.from_user.id, "Правила нашего бара:\n"
-                                                        "1. нельзя пить\n"
-                                                        "2. нельзя курить\n"
-                                                        "3. нельзя спорить с артуром\n")
+    await bot.send_message(callback_query.from_user.id, """⚜️ Правила MAGELLAN Lounge-bar ⚜️
 
+Дорогие гости, в нашем заведении царит атмосфера комфорта. Ради того, чтобы ничего не помешало вам наслаждаться посещением, разработана система правил:
 
-@user_router.callback_query(StateFilter("*"), F.data == "cancel")
-async def cancel(callback_query: types.CallbackQuery, state: FSMContext):
-    global previous_bot_message
+🔸При посещении лаунж-бара, заказ кальяна обязателен (1 кальян на компанию до 4-х гостей, 2 кальяна на 5-6 гостей, 3 кальяна для 7-ми человек)
 
-    current_state = await state.get_state()
-    if current_state is None:
-        return
-    await state.clear()
-    # await callback_query.message.edit_text("Действие отменено", reply_markup=add_goal_kb)
-    await answer(callback_query.message)
+🔸При бронировании VIP-комнаты с Playstation  количество кальянов кратно 1 на 2 гостя. Замена кальяна через 1,5 часа с момента выноса.
 
+🔸Мы придерживаемся взаимного уважения, поэтому, с заботой о других гостях, просим вас проявлять эмоции не громко.
 
-@user_router.callback_query(StateFilter("*"), F.data == "back")
-async def cancel(callback_query: types.CallbackQuery, state: FSMContext):
-    global previous_bot_message
+🔸Возможно заказать доставку еды, мы поможем вам с сервировкой.
 
-    current_state = await state.get_state()
+🔸За порчу имущества заведения предусмотрена система штрафов (список штрафов предоставлен в документах заведения).
 
-    if current_state == AddUser.name:
-        await state.clear()
-        # await callback_query.message.edit_text("Действие отменено", reply_markup=add_goal_kb)
-        await answer(callback_query.message)
+🔸Инвалиды и люди с ограниченными возможностями обслуживаются вне очереди.
 
-    previous_state = await state.get_state()
-    for step in AddUser.__all_states__:
-        if step.state == current_state:
-            await state.set_state(previous_state)
-            await callback_query.message.edit_text(
-                f"Вы вернулись к прошлому шагу \n{AddUser.texts[previous_state.state]}", reply_markup=add_goal_kb)
-        previous_state = step
+❌ Запрещено посещение заведения лицами до 18 лет, при запросе персоналом вашего паспорта - оригинал обязателен.
 
+❌ Запрещено посещение заведения в состоянии наркотического, сильного алкогольного опьянения.
+
+❌ Запрещено курение сигарет, сигарилл, сигар, самокруток, употребление наркотических веществ.
+
+❌ Вход со своим алкоголем и напитками запрещен, предоставляем вам широкий ассортимент напитков, алкогольной, винной и коктейльной карты.
+
+❌ Запрещено посещение гостевого санузла, если вы не являетесь гостем нашего заведения.
+
+❌ Запрещено агрессивное поведение и выражение неуважения гостям и персоналу заведения. При угрозе личной безопасности, персонал заведения имеет право вызвать Охранную Организацию.
+
+❌ Запрещено присвоение имущества заведения. За присвоение зарядных устройств, элементов декора и пр. - взымается плата в размере полной закупочной стоимости.
+
+📍За несоблюдение правил, после вежливого замечания, персонал уполномочен попросить вас покинуть заведение.📍
+
+🎥 Внимание. Ведётся видео-фиксация. 🎥
+
+Приятного и безопасного отдыха,
+🖤 Ваш MAGELLAN! 🖤 """)
 
 # роутер для отлова коллбека по меню
 @user_router.callback_query(StateFilter("*"), F.data == "menu")
